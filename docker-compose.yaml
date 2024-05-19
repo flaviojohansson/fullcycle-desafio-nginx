@@ -1,0 +1,46 @@
+services:
+  nginx:
+    build:
+      context: nginx
+    container_name: nginx
+    networks:
+      - appnet
+    tty: true
+    ports:
+      - "8080:80"
+    depends_on:
+      app:
+        condition: service_started
+  app:
+    build:
+      context: node
+    container_name: app
+    networks:
+      - appnet
+    tty: true
+    depends_on:
+      mysql:
+        condition: service_healthy
+  mysql:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: mysql
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --password=$$MYSQL_ROOT_PASSWORD"]
+      interval: 3s
+      retries: 3
+      start_period: 30s
+    tty: true
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_DATABASE=desafiodb
+      - MYSQL_ROOT_PASSWORD=root
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: bridge
